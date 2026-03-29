@@ -2,11 +2,10 @@ name: docman
 description: Flutter File & Directory Plugin. Easy Android file operations with Storage Access Framework (SAF) API integration.
 repository: https://github.com/devdfcom/docman
 issue_tracker: https://github.com/devdfcom/docman/issues
-version: 1.2.0
+version: 1.2.1
 
 environment:
-  sdk: ^3.5.2
-  flutter: '>=3.3.0'
+  sdk: ">=2.17.0 <3.0.0"
 
 flutter:
   plugin:
@@ -23,7 +22,7 @@ dependencies:
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  flutter_lints: ^5.0.0
+  flutter_lints: ^4.0.0
 
 topics:
   - saf

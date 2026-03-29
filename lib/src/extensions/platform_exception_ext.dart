@@ -12,17 +12,27 @@ extension PlatformExceptionExt on PlatformException {
   /// If the [code] is 'already_running', it throws an [AlreadyRunningException]
   /// with the provided [message]. For any other [code] not in list, it rethrows the original
   /// [PlatformException].
-  Never throwByCode() => switch (code) {
-        AlreadyRunningException.tag => throw AlreadyRunningException(message),
-        NoActivityException.tag => throw NoActivityException(message),
-        AppDirPathException.tag => throw AppDirPathException(message),
-        AppDirActionException.tag => throw AppDirActionException(message),
-        PickerMimeTypeException.tag => throw PickerMimeTypeException(message),
-        PickerMaxLimitException.tag => throw PickerMaxLimitException(message),
-        PickerCountException.tag =>
-          throw PickerCountException(message, details as String),
-        DocumentFileException.tag => throw DocumentFileException(message),
-        PermissionsException.tag => throw PermissionsException(message),
-        _ => throw this,
-      };
+  Never throwByCode() {
+    if (code == AlreadyRunningException.tag) {
+      throw AlreadyRunningException(message);
+    } else if (code == NoActivityException.tag) {
+      throw NoActivityException(message);
+    } else if (code == AppDirPathException.tag) {
+      throw AppDirPathException(message);
+    } else if (code == AppDirActionException.tag) {
+      throw AppDirActionException(message);
+    } else if (code == PickerMimeTypeException.tag) {
+      throw PickerMimeTypeException(message);
+    } else if (code == PickerMaxLimitException.tag) {
+      throw PickerMaxLimitException(message);
+    } else if (code == PickerCountException.tag) {
+      throw PickerCountException(message, details as String);
+    } else if (code == DocumentFileException.tag) {
+      throw DocumentFileException(message);
+    } else if (code == PermissionsException.tag) {
+      throw PermissionsException(message);
+    } else {
+      throw this;
+    }
+  }
 }

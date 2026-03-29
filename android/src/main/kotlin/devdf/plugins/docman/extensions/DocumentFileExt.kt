@@ -33,7 +33,7 @@ import java.io.FileNotFoundException
  * - canCreate: `true` if the directory can create documents, otherwise `false`
  * - canThumbnail: `true` if the file has thumbnail, otherwise `false`
  */
-fun DocumentFile.toMapResult(context: Context): Map<String, Any?>? {
+fun DocumentFile.toMapResult(context: Context, fileUri: String? = null): Map<String, Any?>? {
     return when {
         isDirectory || isFile -> mapOf(
             "name" to name,
@@ -50,6 +50,7 @@ fun DocumentFile.toMapResult(context: Context): Map<String, Any?>? {
             "lastModified" to lastModified(),
             "exists" to exists(),
             "canRead" to canRead(),
+            "path" to fileUri,
 //            "isPersisted" to (persistedPermissions(context) != null),
         ) + getFlagsMap(context)
 

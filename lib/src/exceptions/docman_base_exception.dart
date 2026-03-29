@@ -1,7 +1,7 @@
 /// Base class for all custom exceptions in the `docman` package
 /// {@category Exceptions}
 /// {@category DocMan}
-abstract interface class DocManException implements Exception {
+abstract class DocManException implements Exception {
   /// Representing corresponding `PlatformException` error code.
   final String code;
 

@@ -1,5 +1,5 @@
 /// Library exports all the classes and functions of the docman package.
-library;
+library docman;
 
 ///Export data classes
 export 'src/data/document_file.dart';

@@ -59,10 +59,7 @@ class PickLimit {
   Map<String, dynamic> get args => <String, dynamic>{
         'limit': limit,
         'limitType': type.name,
-        'limitToast': switch (type) {
-          PickLimitResult.restart => toastText ?? 'Pick maximum $limit items',
-          _ => null,
-        },
+        'limitToast': type == PickLimitResult.restart ? toastText ?? 'Pick maximum $limit items' : null,
       };
 }
 

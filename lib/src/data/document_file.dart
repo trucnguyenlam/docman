@@ -17,6 +17,9 @@ class DocumentFile {
   /// The String representation of the document `Uri`.
   final String uri;
 
+  /// Full path of the Document
+  final String? path;
+
   /// Represents the size of the document in bytes.
   /// If it's File & size is 0, means it's an empty file or size is unknown.
   /// If the document is a directory, this will store count of documents in the directory.
@@ -50,6 +53,7 @@ class DocumentFile {
   /// Constructs a [DocumentFile] instance.
   const DocumentFile({
     required this.uri,
+    this.path,
     this.name = 'unknown',
     this.type = 'unknown',
     this.size = 0,
@@ -83,6 +87,7 @@ class DocumentFile {
         name: map['name'] as String,
         type: map['type'] as String? ?? 'unknown',
         uri: map['uri'] as String,
+        path: map['path'] as String?,
         size: map['size'] as int,
         lastModified: map['lastModified'] as int,
         exists: map['exists'] as bool,
@@ -121,6 +126,7 @@ class DocumentFile {
         'name': name,
         'type': type,
         'uri': uri,
+        'path': path,
         'size': size,
         'lastModified': lastModified,
         'exists': exists,

@@ -27,6 +27,7 @@ import devdf.plugins.docman.extensions.toDocumentMap
 import devdf.plugins.docman.extensions.toMapResult
 import devdf.plugins.docman.utils.DocManBuild
 import devdf.plugins.docman.utils.DocManMimeType
+import devdf.plugins.docman.utils.FileUtils
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
 import kotlinx.coroutines.CoroutineScope
@@ -302,9 +303,11 @@ class PickActivity(
             plugin.permissions.takePersistableUriPermission(resultUri)
             //2. Getting the document file
             val docFile = DocumentFile.fromTreeUri(plugin.context, resultUri)
+            //2b. Getting File Uri (full path)
+            val fileUri = FileUtils.getFullPathFromTreeUri(resultUri, plugin.context)
             //3. Validating && Returning the document file as a map
             when {
-                docFile?.exists() == true && docFile.isDirectory -> docFile.toMapResult(plugin.context)
+                docFile?.exists() == true && docFile.isDirectory -> docFile.toMapResult(plugin.context, fileUri)
                 else -> null
             }
         }
