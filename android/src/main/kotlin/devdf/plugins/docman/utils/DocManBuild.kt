@@ -1,8 +1,8 @@
 package devdf.plugins.docman.utils
 
 import android.os.Build
-import android.os.ext.SdkExtensions.getExtensionVersion
 import androidx.annotation.ChecksSdkIntAtLeast
+import androidx.annotation.RequiresApi
 
 /**  Utility class to check for build version and features */
 class DocManBuild {
@@ -32,15 +32,29 @@ class DocManBuild {
          *
          * Is supported on Android Tiramisu and above or
          * on Android R Extensions 2. */
-        @ChecksSdkIntAtLeast(api = Build.VERSION_CODES.R, extension = 2)
+        @ChecksSdkIntAtLeast(api = Build.VERSION_CODES.R)
         fun getPickImagesMaxLimit(): Boolean {
             return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                 true
             } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
                 // getExtension is seen as part of Android Tiramisu only while the SdkExtensions
                 // have been added on Android R
-                getExtensionVersion(Build.VERSION_CODES.R) >= 2
+                getExtensionVersionSafe(Build.VERSION_CODES.R) >= 2
             } else false
+        }
+
+        /** Safely get extension version (requires API 30+) */
+        @RequiresApi(Build.VERSION_CODES.R)
+        private fun getExtensionVersionSafe(version: Int): Int {
+            return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                try {
+                    android.os.ext.SdkExtensions.getExtensionVersion(version)
+                } catch (e: Exception) {
+                    0
+                }
+            } else {
+                0
+            }
         }
 
         /** Can use `Bitmap.CompressFormat.WEBP_LOSSLESS` */

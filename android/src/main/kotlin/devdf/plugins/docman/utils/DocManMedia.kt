@@ -6,13 +6,13 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Canvas
 import android.graphics.Color
-import android.graphics.ImageDecoder
 import android.graphics.Point
-import android.graphics.pdf.PdfRenderer
 import android.media.MediaMetadataRetriever
 import android.media.MediaMetadataRetriever.OPTION_PREVIOUS_SYNC
+import android.os.Build
 import android.provider.DocumentsContract
 import android.util.Size
+import androidx.annotation.RequiresApi
 import androidx.documentfile.provider.DocumentFile
 import devdf.plugins.docman.extensions.canThumbnailAlternate
 import devdf.plugins.docman.extensions.isImage
@@ -87,8 +87,8 @@ class DocManMedia {
 
         }.getOrNull() ?: runCatching {
             //2. If not, try to load thumbnail from content resolver if allowed
-            if (DocManBuild.loadThumbnail()) {
-                context.contentResolver.loadThumbnail(doc.uri, size, null)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && DocManBuild.loadThumbnail()) {
+                loadThumbnailImpl(context, doc, size)
             } else null
         }.getOrNull() ?: if (doc.canThumbnailAlternate(context)) {
             //3. If not, try to get thumbnail by alternate means
@@ -99,6 +99,18 @@ class DocManMedia {
                 else -> null
             }
         } else null
+
+        /** Load thumbnail using ContentResolver (requires API 29+) */
+        @RequiresApi(Build.VERSION_CODES.Q)
+        private fun loadThumbnailImpl(
+            context: Context,
+            doc: DocumentFile,
+            size: Size
+        ): Bitmap? = try {
+            context.contentResolver.loadThumbnail(doc.uri, size, null)
+        } catch (e: Exception) {
+            null
+        }
 
         /** Compress Bitmap to a ByteArrayOutputStream */
         fun compressBitmap(
@@ -121,16 +133,8 @@ class DocManMedia {
             context: Context
         ): Bitmap? = runCatching {
             //1. Use ImageDecoder for newer versions if possible
-            if (DocManBuild.canUseImageDecoder()) {
-                ImageDecoder.decodeBitmap(
-                    ImageDecoder.createSource(context.contentResolver, doc.uri)
-                ) { decoder, info, _ ->
-                    // sample down if needed.
-                    val sample = getSampleRatio(info.size, size)
-                    if (sample > 1) {
-                        decoder.setTargetSampleSize(sample)
-                    }
-                }
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P && DocManBuild.canUseImageDecoder()) {
+                imageDecoderThumbnail(context, doc, size)
             } else null
         }.getOrNull() ?: runCatching {
             //2. Fallback to BitmapFactory for older versions, only jpg, png, webp supported
@@ -138,6 +142,26 @@ class DocManMedia {
                 BitmapFactory.decodeStream(inputStream)
             }?.let { getScaledBitmap(it, size) }
         }.getOrNull()
+
+        /** Use ImageDecoder for image thumbnail (requires API 28+) */
+        @RequiresApi(Build.VERSION_CODES.P)
+        private fun imageDecoderThumbnail(
+            context: Context,
+            doc: DocumentFile,
+            size: Size
+        ): Bitmap? = try {
+            android.graphics.ImageDecoder.decodeBitmap(
+                android.graphics.ImageDecoder.createSource(context.contentResolver, doc.uri)
+            ) { decoder, info, _ ->
+                // sample down if needed.
+                val sample = getSampleRatio(info.size, size)
+                if (sample > 1) {
+                    decoder.setTargetSampleSize(sample)
+                }
+            }
+        } catch (e: Exception) {
+            null
+        }
 
         /** Try to get video thumbnail */
         fun videoThumbnail(
@@ -165,10 +189,8 @@ class DocManMedia {
 
                 frame = when {
                     //4.2 For newer versions, use getScaledFrameAtTime
-                    DocManBuild.getScaledFrameAtTime() -> retriever.getScaledFrameAtTime(
-                        -1, OPTION_PREVIOUS_SYNC,
-                        sampleSize.width, sampleSize.height
-                    )
+                    Build.VERSION.SDK_INT >= Build.VERSION_CODES.P && DocManBuild.getScaledFrameAtTime() ->
+                        getScaledFrameAtTimeImpl(retriever, sampleSize)
                     //4.3 For older versions, use frameAtTime
                     else -> retriever.frameAtTime?.let { getScaledBitmap(it, size) }
                 }
@@ -178,8 +200,36 @@ class DocManMedia {
             frame
         }.getOrNull()
 
+        /** Get scaled frame at time (requires API 28+) */
+        @RequiresApi(Build.VERSION_CODES.P)
+        private fun getScaledFrameAtTimeImpl(
+            retriever: MediaMetadataRetriever,
+            sampleSize: Size
+        ): Bitmap? = try {
+            retriever.getScaledFrameAtTime(
+                -1, OPTION_PREVIOUS_SYNC,
+                sampleSize.width, sampleSize.height
+            )
+        } catch (e: Exception) {
+            null
+        }
+
         /** Try to get pdf thumbnail */
         fun pdfThumbnail(
+            doc: DocumentFile,
+            size: Size,
+            context: Context
+        ): Bitmap? {
+            return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                pdfThumbnailImpl(doc, size, context)
+            } else {
+                null
+            }
+        }
+
+        /** Implementation of PDF thumbnail extraction (requires API 21+) */
+        @RequiresApi(Build.VERSION_CODES.LOLLIPOP)
+        private fun pdfThumbnailImpl(
             doc: DocumentFile,
             size: Size,
             context: Context
@@ -187,7 +237,8 @@ class DocManMedia {
             //1. Setting up the renderer
             context.contentResolver.openFileDescriptor(doc.uri, "r")?.use { fileDescriptor ->
                 //2. Get the first page
-                val page = PdfRenderer(fileDescriptor).openPage(0)
+                val renderer = android.graphics.pdf.PdfRenderer(fileDescriptor)
+                val page = renderer.openPage(0)
                 //3. Get the bitmap from the page
                 val bitmap =
                     Bitmap.createBitmap(page.width, page.height, Bitmap.Config.ARGB_8888)
@@ -198,9 +249,10 @@ class DocManMedia {
                     bitmap,
                     null,
                     null,
-                    PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY
+                    android.graphics.pdf.PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY
                 )
                 page.close()
+                renderer.close()
                 //5. Scale it if needed
                 getScaledBitmap(bitmap, size)
             }
@@ -214,7 +266,7 @@ class DocManMedia {
             quality: Int
         ): Pair<Bitmap.CompressFormat, Int> = when (format) {
             BitmapCompressFormat.WEBP -> {
-                if (DocManBuild.newCompressFormatWEBP()) {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && DocManBuild.newCompressFormatWEBP()) {
                     Pair(Bitmap.CompressFormat.WEBP_LOSSLESS, 100 - quality)
                 } else {
                     Pair(Bitmap.CompressFormat.WEBP, quality)
