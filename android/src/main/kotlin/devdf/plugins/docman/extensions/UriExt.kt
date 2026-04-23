@@ -2,6 +2,7 @@ package devdf.plugins.docman.extensions
 
 import android.content.Context
 import android.net.Uri
+import android.os.Build
 import android.provider.DocumentsContract
 import androidx.core.content.FileProvider
 import androidx.core.net.toFile
@@ -55,11 +56,20 @@ fun Uri.toDocumentFile(context: Context): DocumentFile? {
 }
 
 fun Uri.getDocumentId(context: Context): String {
-    var documentId = DocumentsContract.getTreeDocumentId(this)
+    // Prefer document URI check first (works on API 19+)
     if (DocumentsContract.isDocumentUri(context, this)) {
-        documentId = DocumentsContract.getDocumentId(this)
+        return DocumentsContract.getDocumentId(this)
     }
-    return documentId
+    // Tree URIs need getTreeDocumentId (API 21+)
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP && isTreeUri()) {
+        return DocumentsContract.getTreeDocumentId(this)
+    }
+    // Last resort fallback with safety net
+    return try {
+        DocumentsContract.getDocumentId(this)
+    } catch (e: IllegalArgumentException) {
+        DocumentsContract.getTreeDocumentId(this)
+    }
 }
 
 /** Convert [Uri] to [DocumentFile] -> [DocumentFile.toMapResult]  */

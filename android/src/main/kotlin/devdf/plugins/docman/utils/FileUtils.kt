@@ -51,7 +51,7 @@ object FileUtils {
                         result = cursor.getString(cursor.getColumnIndexOrThrow(OpenableColumns.DISPLAY_NAME))
                     }
                 } finally {
-                    cursor!!.close()
+                    cursor?.close()
                 }
             }
             if (result == null) {
@@ -93,7 +93,11 @@ object FileUtils {
 
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
             if (isDownloadsDocument(treeUri)) {
-                val docId = DocumentsContract.getDocumentId(treeUri)
+                val docId = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP && isTreeUri(treeUri)) {
+                    DocumentsContract.getTreeDocumentId(treeUri)
+                } else {
+                    DocumentsContract.getDocumentId(treeUri)
+                }
                 val extPath = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS).path
                 if (docId == "downloads") {
                     return extPath
@@ -101,11 +105,16 @@ object FileUtils {
                     val fileName = getFileName(treeUri, con)
                     return "$extPath/$fileName"
                 } else if (docId.startsWith("raw:")) {
-                    val rawPath = docId.split(":".toRegex()).dropLastWhile { it.isEmpty() }.toTypedArray()[1]
+                    val rawPath = docId.substringAfter("raw:")
                     return rawPath
                 }
                 return null
             }
+        }
+
+        // Tree URIs require API 21+ (ACTION_OPEN_DOCUMENT_TREE was added in Lollipop)
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.LOLLIPOP) {
+            return null
         }
 
         val volumeId = getVolumeIdFromTreeUri(treeUri)
@@ -127,11 +136,10 @@ object FileUtils {
 
         if (volumePath.endsWith(File.separator)) volumePath = volumePath.substring(0, volumePath.length - 1)
 
-        var documentPath = getDocumentPathFromTreeUri(treeUri)
+        val documentPath = getDocumentPathFromTreeUri(treeUri)?.trimEnd(File.separatorChar)
+            ?: return volumePath
 
-        if (documentPath!!.endsWith(File.separator)) documentPath = documentPath.substring(0, documentPath.length - 1)
-
-        return if (documentPath.length > 0) {
+        return if (documentPath.isNotEmpty()) {
             if (documentPath.startsWith(File.separator)) {
                 volumePath + documentPath
             } else {
@@ -219,6 +227,14 @@ object FileUtils {
 
     private fun isDownloadsDocument(uri: Uri): Boolean {
         return "com.android.providers.downloads.documents" == uri.authority
+    }
+
+    private fun isTreeUri(uri: Uri): Boolean {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+            return DocumentsContract.isTreeUri(uri)
+        }
+        val paths = uri.pathSegments
+        return paths.size >= 2 && "tree" == paths[0]
     }
 
     @TargetApi(Build.VERSION_CODES.LOLLIPOP)

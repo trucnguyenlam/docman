@@ -4,6 +4,7 @@ import android.annotation.SuppressLint
 import android.app.Activity
 import android.content.Intent
 import android.net.Uri
+import android.os.Build
 import android.provider.MediaStore
 import android.widget.Toast
 import androidx.activity.result.PickVisualMediaRequest
@@ -158,6 +159,12 @@ class PickActivity(
 
     /** Picking directory intent */
     private fun actionOpenDocumentTreeIntent(): Intent {
+        // ACTION_OPEN_DOCUMENT_TREE requires API 21+
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.LOLLIPOP) {
+            throw UnsupportedOperationException(
+                "Directory picking requires API 21+ (current: ${Build.VERSION.SDK_INT})"
+            )
+        }
         val intent = Intent(Intent.ACTION_OPEN_DOCUMENT_TREE)
         //1. Setting initial directory, if not set,
         // The best option for the user to pick a directory from the External Storage Provider
